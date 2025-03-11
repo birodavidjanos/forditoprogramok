@@ -1,120 +1,77 @@
 #include <iostream>
+#include <regex>
 #include <string>
 #include <vector>
-#include <cctype>
-using namespace std;
 
-// Enum class to define the token types
+// Token típusok
 enum class TokenType {
     KONSTANS,
     AZONOSITO,
-    OPERATOR,
-    EOF_SYMBOL,
-    UNKNOWN
+    OPERÁTOR,
+    RELÁCIÓS_JEL,
+    FAJL_VEGE
 };
 
-// Struct for tokens
+// Token struktúra
 struct Token {
     TokenType type;
-    string value;
-
-    Token(TokenType t, const string& v) : type(t), value(v) {}
+    std::string value;
 };
 
-// Function to determine if a character is an operator
-bool isOperator(char c) {
-    return c == '>' || c == '<' || c == '=' || c == '*' || c == '{' || c == '}' || c == '(' || c == ')' || c == '$';
-}
+// Tokenizáló függvény
+std::vector<Token> lexikalalisElemzo(const std::string& bemenet) {
+    std::vector<Token> tokenek;
+    std::regex tokenRegEx(R"((\d+|[A-ZÁÉÍÓÖŐÚÜŰ]+|[=><!*{}()$]))"); // Regular expression a tokenekhez
+    auto words_begin = std::sregex_iterator(bemenet.begin(), bemenet.end(), tokenRegEx);
+    auto words_end = std::sregex_iterator();
 
-// Function to tokenize the input string
-vector<Token> tokenize(const string& input) {
-    vector<Token> tokens;
-    size_t i = 0;
+    for (auto it = words_begin; it != words_end; ++it) {
+        std::string token = it->str();
 
-    while (i < input.size()) {
-        char current = input[i];
-
-        // Skip whitespace
-        if (isspace(current)) {
-            i++;
-            continue;
+        // Azonosítók és konstansok kezelése
+        if (std::isdigit(token[0])) {
+            tokenek.push_back({TokenType::KONSTANS, token});
+        } else if (token == "{" || token == "}" || token == "*" || token == "**" || token == "(" || token == ")" || token == "<>" || token == "$") {
+            tokenek.push_back({TokenType::OPERÁTOR, token});
+        } else {
+            tokenek.push_back({TokenType::AZONOSITO, token});
         }
-
-        // Recognize numbers (constants)
-        if (isdigit(current)) {
-            string num;
-            while (i < input.size() && isdigit(input[i])) {
-                num += input[i++];
-            }
-            tokens.emplace_back(TokenType::KONSTANS, num);
-            continue;
-        }
-
-        // Recognize identifiers (alphanumeric sequences starting with a letter)
-        if (isalpha(current)) {
-            string id;
-            while (i < input.size() && (isalnum(input[i]) || input[i] == '_')) {
-                id += input[i++];
-            }
-            tokens.emplace_back(TokenType::AZONOSITO, id);
-            continue;
-        }
-
-        // Recognize operators
-        if (isOperator(current)) {
-            string op(1, current);
-
-            // Handle multi-character operators
-            if (i + 1 < input.size() && isOperator(input[i + 1])) {
-                op += input[++i];
-            }
-            tokens.emplace_back(TokenType::OPERATOR, op);
-            i++;
-            continue;
-        }
-
-        // Recognize EOF symbol
-        if (current == '$') {
-            tokens.emplace_back(TokenType::EOF_SYMBOL, "$");
-            i++;
-            continue;
-        }
-
-        // If none of the above, mark as unknown
-        tokens.emplace_back(TokenType::UNKNOWN, string(1, current));
-        i++;
     }
 
-    return tokens;
+    // EOF token hozzáadása
+    tokenek.push_back({TokenType::FAJL_VEGE, "$"});
+
+    return tokenek;
 }
 
-// Function to get the token type as a string
-string getTokenTypeName(TokenType type) {
-    switch (type) {
-        case TokenType::KONSTANS: return "konstans";
-        case TokenType::AZONOSITO: return "azonosito";
-        case TokenType::OPERATOR: return "operátor vagy relációsjel";
-        case TokenType::EOF_SYMBOL: return "eof";
-        default: return "ismeretlen";
+// Tokenek kiírása
+void kiirTokenek(const std::vector<Token>& tokenek) {
+    for (const auto& token : tokenek) {
+        switch (token.type) {
+            case TokenType::KONSTANS:
+                std::cout << "konstans: " << token.value << std::endl;
+                break;
+            case TokenType::AZONOSITO:
+                std::cout << "azonosito: " << token.value << std::endl;
+                break;
+            case TokenType::OPERÁTOR:
+                std::cout << "operátor vagy relációsjel: " << token.value << std::endl;
+                break;
+            case TokenType::FAJL_VEGE:
+                std::cout << "eof: " << token.value << std::endl;
+                break;
+        }
     }
 }
 
-// Function to print the tokens
-void printTokens(const vector<Token>& tokens) {
-    for (const auto& token : tokens) {
-        cout << getTokenTypeName(token.type) << ": " << token.value << endl;
-    }
-}
-
-// Main function
 int main() {
-    string input = "2003ISTRÁB2003>=ÁRVAI{*DÁVID**}<>(**CSABA*)128TAMÁS$";
+    std::string bemenet = "2003ISTRÁB2003>=ÁRVAI{*DÁVID**}<>(**CSABA*)128TAMÁS$";
+    
+    // Tokenizálás
+    std::vector<Token> tokenek = lexikalalisElemzo(bemenet);
 
-    cout << "Bemenet: " << input << endl << endl;
+    // Tokenek kiírása
+    kiirTokenek(tokenek);
 
-    vector<Token> tokens = tokenize(input);
-
-    cout << "Tokenek:" << endl;
-    printTokens(tokens);
-
-    return 0
+    return 0;
+}
